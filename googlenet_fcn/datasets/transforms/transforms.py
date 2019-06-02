@@ -123,9 +123,9 @@ class RandomAffine(object):
         return scale, shear
 
     def __call__(self, img, inst):
-        ret = self.get_params(self.scale, self.shear)
-        img = F.affine(img, *ret, resample=False, fillcolor=self.fillcolor)
-        inst = F.affine(inst, *ret, resample=False, fillcolor=self.fillcolor)
+        scale, shear = self.get_params(self.scale, self.shear)
+        img = F.affine(img, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
+        inst = F.affine(inst, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
 
         return img, inst
 
