@@ -100,7 +100,8 @@ def run(args):
 
     tb_logger = TensorboardLogger(args.log_dir)
     tb_logger.attach(trainer,
-                     log_handler=OutputHandler(tag='training'),
+                     log_handler=OutputHandler(tag='training',
+                                               metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
 
     tb_logger.attach(evaluator,
