@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from googlenet_fcn.models.googlenet_fcn import GoogLeNetFCN
+from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
