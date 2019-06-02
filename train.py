@@ -62,9 +62,9 @@ def run(args):
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 
-    optimizer = optim.SGD([{'params': filter(lambda n, p: n[-4:] != 'bias', model.named_parameters()),
+    optimizer = optim.SGD([{'params': filter(lambda p: p[1][-4:] != 'bias', model.named_parameters()),
                             'lr': args.lr, 'weight_decay': 5e-4},
-                           {'params': filter(lambda n, p: n[-4:] == 'bias', model.named_parameters()),
+                           {'params': filter(lambda p: p[1][-4:] == 'bias', model.named_parameters()),
                             'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
 
     if args.resume:
