@@ -62,12 +62,10 @@ def run(args):
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 
-    #    optimizer = optim.SGD([{'params': filter(lambda p: p[1][-4:] != 'bias', model.named_parameters()),
-    #                            'lr': args.lr, 'weight_decay': 5e-4},
-    #                           {'params': filter(lambda p: p[1][-4:] == 'bias', model.named_parameters()),
-    #                            'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
-
-    optimizer = optim.SGD(model.parameters(), momentum=args.momentum, weight_decay=5e-4, lr=args.lr)
+    optimizer = optim.SGD([{'params': [p for p, name in model.named_parameters() if name[-4:] != 'bias'],
+                            'lr': args.lr, 'weight_decay': 5e-4},
+                           {'params': [p for p, name in model.named_parameters() if name[-4:] == 'bias'],
+                            'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
 
     if args.resume:
         if os.path.isfile(args.resume):
@@ -162,9 +160,9 @@ def run(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser('GoogLeNet-FCN with PyTorch')
-    parser.add_argument('--batch-size', type=int, default=8,
+    parser.add_argument('--batch-size', type=int, default=1,
                         help='input batch size for training')
-    parser.add_argument('--val-batch-size', type=int, default=8,
+    parser.add_argument('--val-batch-size', type=int, default=4,
                         help='input batch size for validation')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
