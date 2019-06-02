@@ -60,7 +60,7 @@ def run(args):
         args.val_batch_size = device_count * args.val_batch_size
 
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()#ignore_index=255)
+    criterion = nn.CrossEntropyLoss(ignore_index=255)
 
     #    optimizer = optim.SGD([{'params': filter(lambda p: p[1][-4:] != 'bias', model.named_parameters()),
     #                            'lr': args.lr, 'weight_decay': 5e-4},
