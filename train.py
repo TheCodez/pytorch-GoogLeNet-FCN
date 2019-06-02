@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
@@ -16,6 +15,7 @@ from torchvision import transforms
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, RandomAffine, ToTensor, \
     RandomHorizontalFlip
+from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 
 
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
@@ -62,10 +62,12 @@ def run(args):
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 
-    optimizer = optim.SGD([{'params': filter(lambda p: p[1][-4:] != 'bias', model.named_parameters()),
-                            'lr': args.lr, 'weight_decay': 5e-4},
-                           {'params': filter(lambda p: p[1][-4:] == 'bias', model.named_parameters()),
-                            'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
+    #    optimizer = optim.SGD([{'params': filter(lambda p: p[1][-4:] != 'bias', model.named_parameters()),
+    #                            'lr': args.lr, 'weight_decay': 5e-4},
+    #                           {'params': filter(lambda p: p[1][-4:] == 'bias', model.named_parameters()),
+    #                            'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
+
+    optimizer = optim.SGD(model.parameters(), momentum=args.momentum, weight_decay=5e-4, lr=args.lr)
 
     if args.resume:
         if os.path.isfile(args.resume):
