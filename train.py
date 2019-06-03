@@ -9,6 +9,7 @@ from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
+from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -79,7 +80,17 @@ def run(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
 
-    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
+    def _prepare_batch(batch, device=None, non_blocking=False):
+        """Prepare batch for training: pass to a device with options.
+
+        """
+        x, y = batch
+
+        print(y.size())
+        return (convert_tensor(x, device=device, non_blocking=non_blocking),
+                convert_tensor(y, device=device, non_blocking=non_blocking))
+
+    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True, prepare_batch=_prepare_batch)
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
     # attach progress bar
