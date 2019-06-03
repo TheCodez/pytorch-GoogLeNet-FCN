@@ -51,7 +51,7 @@ def run(args):
     num_classes = CityscapesDataset.num_classes()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = GoogLeNetFCN(num_classes)
-    model.init_from_googlenet()
+    # model.init_from_googlenet()
 
     device_count = torch.cuda.device_count()
     if device_count > 1:
