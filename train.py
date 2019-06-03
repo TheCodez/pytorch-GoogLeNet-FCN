@@ -16,6 +16,7 @@ from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, RandomAffine, ToTensor, \
     RandomHorizontalFlip
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
+from googlenet_fcn.utils import save
 
 
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
@@ -117,8 +118,8 @@ def run(args):
         file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
                 'optimizer': optimizer.state_dict(), 'args': args}
 
-        torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
-        torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
+        save(file, args.output_dir, 'checkpoint_{}'.format(name))
+        save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
@@ -148,8 +149,8 @@ def run(args):
             file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
                     'optimizer': optimizer.state_dict()}
 
-            torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
-            torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
+            save(file, args.output_dir, 'checkpoint_{}'.format(name))
+            save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
         else:
             raise e
 
