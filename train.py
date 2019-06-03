@@ -9,7 +9,7 @@ from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
-from ignite.utils import convert_tensor
+from ignite.utils import convert_tensor, to_onehot
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -62,7 +62,7 @@ def run(args):
         args.val_batch_size = device_count * args.val_batch_size
 
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()#ignore_index=255)
+    criterion = nn.CrossEntropyLoss(ignore_index=255)
 
     optimizer = optim.SGD([{'params': [p for name, p in model.named_parameters() if name[-4:] != 'bias'],
                             'lr': args.lr, 'weight_decay': 5e-4},
@@ -85,6 +85,8 @@ def run(args):
 
         """
         x, y = batch
+
+        y = to_onehot(y, num_classes)
 
         print(y.size())
         return (convert_tensor(x, device=device, non_blocking=non_blocking),

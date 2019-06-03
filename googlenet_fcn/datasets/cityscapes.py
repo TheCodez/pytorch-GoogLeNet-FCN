@@ -17,15 +17,13 @@ class CityscapesDataset(datasets.Cityscapes):
 
     def __getitem__(self, index):
         image, target = super(CityscapesDataset, self).__getitem__(index)
-        #target = self.convert_id_to_train_id(target)
+        target = self.convert_id_to_train_id(target)
 
         if self.joint_transform:
             image, target = self.joint_transform(image, target)
 
         if self.img_transform:
             image = self.img_transform(image)
-
-        target[target == 255] = 0
 
         return image, target
 
