@@ -19,6 +19,8 @@ class CityscapesDataset(datasets.Cityscapes):
         image, target = super(CityscapesDataset, self).__getitem__(index)
         target = self.convert_id_to_train_id(target)
 
+        target[target == 255] = 0
+
         if self.joint_transform:
             image, target = self.joint_transform(image, target)
 
