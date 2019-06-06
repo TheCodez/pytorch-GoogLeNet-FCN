@@ -23,7 +23,7 @@ class ToTensor(object):
 
     def __call__(self, img, target):
         img = F.to_tensor(img)
-        target = torch.as_tensor(np.asarray(target, dtype=np.uint8), dtype=torch.int64)
+        target = torch.as_tensor(np.asarray(target), dtype=torch.int64)
 
         return img, target
 

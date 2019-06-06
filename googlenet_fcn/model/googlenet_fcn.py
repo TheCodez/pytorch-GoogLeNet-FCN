@@ -62,7 +62,8 @@ class GoogLeNetFCN(nn.Module):
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.ConvTranspose2d):
                 upsampling_weight = get_upsampling_weight(m.out_channels, m.kernel_size[0])
-                m.weight.data.copy_(upsampling_weight)
+                with torch.no_grad():
+                    m.weight.copy_(upsampling_weight)
 
     def init_from_googlenet(self):
         googlenet = models.googlenet(pretrained=True)
