@@ -7,7 +7,7 @@ import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_evaluator, Engine
-from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
+from ignite.metrics import RunningAverage, Loss
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 from torchvision import transforms
@@ -15,6 +15,7 @@ from torchvision import transforms
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId
+from googlenet_fcn.metrics.IoU import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
 
@@ -115,7 +116,7 @@ def run(args):
 
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
-                                                            'IoU': IoU(cm)},
+                                                            'IoU': IoU(cm, ignore_index=255)},
                                             device=device, non_blocking=True)
 
     pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
