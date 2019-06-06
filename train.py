@@ -81,18 +81,7 @@ def run(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
 
-    def _prepare_batch(batch, device=None, non_blocking=False):
-        """Prepare batch for training: pass to a device with options.
-
-        """
-        x, y = batch
-
-        print(y.size())
-        return (convert_tensor(x, device=device, non_blocking=non_blocking),
-                convert_tensor(y, device=device, non_blocking=non_blocking))
-
-    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True,
-                                        prepare_batch=_prepare_batch)
+    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
     # attach progress bar
