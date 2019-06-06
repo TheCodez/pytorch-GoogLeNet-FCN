@@ -6,14 +6,14 @@ import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator, Engine
+from ignite.engine import Events, create_supervised_evaluator, Engine
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
-from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, RandomAffine, ToTensor, \
+from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -22,9 +22,14 @@ from googlenet_fcn.utils import save
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     joint_transforms = Compose([
         RandomHorizontalFlip(),
-        RandomAffine(scale=(0.9, 1.6), shear=(-15, 15), fillcolor=255),
+        # RandomAffine(scale=(0.9, 1.6), shear=(-15, 15), fillcolor=255),
         ColorJitter(0.3, 0.3, 0.3),
         # RandomGaussionBlur(sigma=(0, 1.2)),
+        ToTensor(),
+        ConvertIdToTrainId()
+    ])
+
+    val_joint_transforms = Compose([
         ToTensor(),
         ConvertIdToTrainId()
     ])
@@ -35,7 +40,7 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
                                                 img_transform=normalize),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', joint_transform=ToTensor(),
+    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', joint_transform=val_joint_transforms,
                                               img_transform=normalize),
                             batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
