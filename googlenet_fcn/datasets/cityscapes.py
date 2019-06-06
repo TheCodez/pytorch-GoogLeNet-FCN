@@ -1,8 +1,6 @@
-import numpy as np
 import torch
 import torchvision
 import torchvision.datasets as datasets
-from PIL import Image
 
 from googlenet_fcn.datasets.transforms.transforms import Resize, RandomHorizontalFlip, Compose, ToTensor
 
@@ -17,7 +15,6 @@ class CityscapesDataset(datasets.Cityscapes):
 
     def __getitem__(self, index):
         image, target = super(CityscapesDataset, self).__getitem__(index)
-        target = self.convert_id_to_train_id(target)
 
         if self.joint_transform:
             image, target = self.joint_transform(image, target)
@@ -29,14 +26,12 @@ class CityscapesDataset(datasets.Cityscapes):
 
     @staticmethod
     def convert_id_to_train_id(target):
-        target = np.array(target)
-        target_copy = target.copy()
+        target_copy = target.clone()
 
         for cls in CityscapesDataset.classes:
             target_copy[target == cls.id] = cls.train_id
-            target = Image.fromarray(target_copy.astype(np.uint8))
 
-        return target
+        return target_copy
 
     @staticmethod
     def convert_train_id_to_id(target):

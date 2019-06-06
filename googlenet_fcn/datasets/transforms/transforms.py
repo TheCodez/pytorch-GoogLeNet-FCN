@@ -5,6 +5,8 @@ import torch
 import torchvision.transforms.functional as F
 from PIL import Image
 
+from googlenet_fcn.datasets.cityscapes import CityscapesDataset
+
 
 class Compose(object):
 
@@ -21,7 +23,15 @@ class ToTensor(object):
 
     def __call__(self, img, target):
         img = F.to_tensor(img)
-        target = torch.as_tensor(np.asarray(target), dtype=torch.int64)
+        target = torch.as_tensor(np.asarray(target, dtype=np.uint8), dtype=torch.int64)
+
+        return img, target
+
+
+class ConvertIdToTrainId(object):
+
+    def __call__(self, img, target):
+        target = CityscapesDataset.convert_id_to_train_id(target)
 
         return img, target
 
@@ -76,10 +86,10 @@ class ColorJitter(object):
         from torchvision import transforms
         self.transform = transforms.ColorJitter(brightness, contrast, saturation, hue)
 
-    def __call__(self, img, inst):
+    def __call__(self, img, target):
         img = self.transform(img)
 
-        return img, inst
+        return img, target
 
 
 """
@@ -87,13 +97,13 @@ class RandomGaussionBlur(object):
     def __init__(self, sigma=(0.15, 1.15)):
         self.sigma = sigma
 
-    def __call__(self, img, inst):
+    def __call__(self, img, target):
         sigma = self.sigma[0] + random.random() * self.sigma[1]
         blurred_img = gaussian(np.array(img), sigma=sigma, multichannel=True)
         blurred_img *= 255
         img = Image.fromarray(blurred_img.astype(np.uint8))
 
-        return img, inst
+        return img, target
 """
 
 
@@ -122,12 +132,12 @@ class RandomAffine(object):
 
         return scale, shear
 
-    def __call__(self, img, inst):
+    def __call__(self, img, target):
         scale, shear = self.get_params(self.scale, self.shear)
         img = F.affine(img, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
-        inst = F.affine(inst, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
+        target = F.affine(target, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
 
-        return img, inst
+        return img, target
 
 
 class RandomGaussionNoise(object):

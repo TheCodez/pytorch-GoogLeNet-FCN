@@ -9,13 +9,13 @@ from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
-from ignite.utils import convert_tensor, to_onehot
+from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, RandomAffine, ToTensor, \
-    RandomHorizontalFlip
+    RandomHorizontalFlip, ConvertIdToTrainId
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
 
@@ -26,7 +26,8 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         RandomAffine(scale=(0.9, 1.6), shear=(-15, 15), fillcolor=255),
         ColorJitter(0.3, 0.3, 0.3),
         # RandomGaussionBlur(sigma=(0, 1.2)),
-        ToTensor()
+        ToTensor(),
+        ConvertIdToTrainId()
     ])
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -43,9 +44,6 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
 
 
 def run(args):
-    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
-                                                args.num_workers)
-
     if args.seed is not None:
         torch.manual_seed(args.seed)
 
@@ -60,6 +58,9 @@ def run(args):
         model = nn.DataParallel(model)
         args.batch_size = device_count * args.batch_size
         args.val_batch_size = device_count * args.val_batch_size
+
+    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
+                                                args.num_workers)
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
@@ -86,13 +87,12 @@ def run(args):
         """
         x, y = batch
 
-        y = to_onehot(y, num_classes)
-
         print(y.size())
         return (convert_tensor(x, device=device, non_blocking=non_blocking),
                 convert_tensor(y, device=device, non_blocking=non_blocking))
 
-    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True, prepare_batch=_prepare_batch)
+    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True,
+                                        prepare_batch=_prepare_batch)
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
     # attach progress bar
@@ -101,7 +101,7 @@ def run(args):
 
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
-                                                            'IoU': IoU(cm, ignore_index=0)},
+                                                            'IoU': IoU(cm)},
                                             device=device, non_blocking=True)
 
     pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
@@ -150,22 +150,6 @@ def run(args):
 
         pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}'
                          .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
-
-    @trainer.on(Events.EXCEPTION_RAISED)
-    def handle_exception(engine, e):
-        engine.state.exception_raised = True
-        if isinstance(e, KeyboardInterrupt) and (engine.state.iteration > 1):
-            engine.terminate()
-            warnings.warn("KeyboardInterrupt caught. Exiting gracefully.")
-
-            name = 'epoch{}_exception.pth'.format(trainer.state.epoch)
-            file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
-                    'optimizer': optimizer.state_dict()}
-
-            save(file, args.output_dir, 'checkpoint_{}'.format(name))
-            save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
-        else:
-            raise e
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
