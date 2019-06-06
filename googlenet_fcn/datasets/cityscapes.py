@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torchvision.datasets as datasets
 
-from googlenet_fcn.datasets.transforms.transforms import Resize, RandomHorizontalFlip, Compose, ToTensor
+#from googlenet_fcn.datasets.transforms.transforms import Resize, RandomHorizontalFlip, Compose, ToTensor
 
 
 class CityscapesDataset(datasets.Cityscapes):
@@ -69,7 +69,7 @@ class CityscapesDataset(datasets.Cityscapes):
     def num_classes():
         return len([cls for cls in CityscapesDataset.classes if not cls.ignore_in_eval])
 
-
+"""
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
@@ -117,3 +117,4 @@ if __name__ == '__main__':
     plt.imshow(inst)
     ax = plt.gca()
     plt.show()
+"""
