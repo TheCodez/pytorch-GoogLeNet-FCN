@@ -1,5 +1,4 @@
 import os
-import warnings
 from argparse import ArgumentParser
 
 import torch
@@ -7,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator, Engine
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
@@ -81,7 +80,28 @@ def run(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
 
-    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
+    def _prepare_batch(batch, non_blocking=True):
+        x, y = batch
+
+        return (convert_tensor(x, device=device, non_blocking=non_blocking),
+                convert_tensor(y, device=device, non_blocking=non_blocking))
+
+    def _update(engine, batch):
+        model.train()
+
+        if engine.state.iteration % args.grad_accum == 0:
+            optimizer.zero_grad()
+        image, target = _prepare_batch(batch)
+        pred = model(image)
+        loss = criterion(pred, target) / args.grad_accum
+        loss.backward()
+        if engine.state.iteration % args.grad_accum == 0:
+            optimizer.step()
+
+        return loss.item()
+
+    trainer = Engine(_update)
+
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
     # attach progress bar
@@ -172,5 +192,7 @@ if __name__ == '__main__':
                         help="log directory for Tensorboard log output")
     parser.add_argument("--dataset-dir", type=str, default="data/cityscapes",
                         help="location of the dataset")
+    parser.add_argument('--grad-accum', type=int, default=1,
+                        help='grad accumulation')
 
     run(parser.parse_args())
