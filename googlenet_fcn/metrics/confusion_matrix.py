@@ -25,7 +25,7 @@ class ConfusionMatrix(Metric):
             self.confusion_matrix += torch.bincount(inds, minlength=n ** 2).reshape(n, n)
 
     def reset(self):
-        self.confusion_matrix.zero_()
+        self.confusion_matrix = torch.zeros(self.num_classes, self.num_classes, dtype=torch.int64)
         self._num_examples = 0
 
     def compute(self):
