@@ -24,6 +24,7 @@ class ConfusionMatrix(Metric):
             k = (y >= 0) & (y < n)
             inds = n * y[k].to(torch.int64) + y_pred[k]
             self.confusion_matrix += torch.bincount(inds, minlength=n ** 2).reshape(n, n)
+            self._num_examples += y_pred.shape[0]
 
     def reset(self):
         if self.confusion_matrix is not None:
