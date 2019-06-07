@@ -15,7 +15,7 @@ from torchvision import transforms
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId
-from googlenet_fcn.metrics.IoU import ConfusionMatrix, IoU
+from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
 
@@ -116,7 +116,7 @@ def run(args):
 
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
-                                                            'IoU': IoU(cm, ignore_index=255)},
+                                                            'IoU': IoU(cm)},
                                             device=device, non_blocking=True)
 
     pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
