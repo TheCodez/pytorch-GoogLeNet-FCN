@@ -14,7 +14,7 @@ from torchvision import transforms
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
-    RandomHorizontalFlip, ConvertIdToTrainId
+    RandomHorizontalFlip, ConvertIdToTrainId, RandomGaussionBlur, RandomAffine, RandomApply
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -23,9 +23,9 @@ from googlenet_fcn.utils import save
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     joint_transforms = Compose([
         RandomHorizontalFlip(),
-        # RandomAffine(scale=(0.9, 1.6), shear=(-15, 15), fillcolor=255),
-        ColorJitter(0.3, 0.3, 0.3),
-        # RandomGaussionBlur(sigma=(0, 1.2)),
+        RandomApply([RandomAffine(scale=(0.9, 1.2), shear=(-10, 10))]),
+        ColorJitter(0.2, 0.2, 0.2),
+        RandomGaussionBlur(),
         ToTensor(),
         ConvertIdToTrainId()
     ])

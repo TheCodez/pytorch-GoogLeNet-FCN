@@ -2,8 +2,9 @@ import random
 
 import numpy as np
 import torch
+import torchvision.transforms as T
 import torchvision.transforms.functional as F
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 
@@ -33,6 +34,21 @@ class ConvertIdToTrainId(object):
     def __call__(self, img, target):
         target = CityscapesDataset.convert_id_to_train_id(target)
 
+        return img, target
+
+
+class RandomApply(object):
+
+    def __init__(self, transforms, p=0.5):
+        self.transforms = transforms
+        self.p = p
+
+    def __call__(self, img, target):
+        if self.p < random.random():
+            return img, target
+
+        for t in self.transforms:
+            img, target = t(img, target)
         return img, target
 
 
@@ -92,50 +108,27 @@ class ColorJitter(object):
         return img, target
 
 
-"""
 class RandomGaussionBlur(object):
-    def __init__(self, sigma=(0.15, 1.15)):
-        self.sigma = sigma
+    def __init__(self, p=0.5, radius=0.8):
+        self.p = p
+        self.radius = radius
 
     def __call__(self, img, target):
-        sigma = self.sigma[0] + random.random() * self.sigma[1]
-        blurred_img = gaussian(np.array(img), sigma=sigma, multichannel=True)
-        blurred_img *= 255
-        img = Image.fromarray(blurred_img.astype(np.uint8))
+        if random.random() < self.p:
+            img = img.filter(ImageFilter.GaussianBlur(radius=self.radius))
 
         return img, target
-"""
 
 
 class RandomAffine(object):
-    def __init__(self, scale=None, shear=None, fillcolor=0):
+    def __init__(self, scale=None, shear=None):
         self.scale = scale
         self.shear = shear
-        self.fillcolor = fillcolor
-
-    @staticmethod
-    def get_params(scale_ranges, shears):
-        """Get parameters for affine transformation
-
-        Returns:
-            sequence: params to be passed to the affine transformation
-        """
-        if scale_ranges is not None:
-            scale = random.uniform(scale_ranges[0], scale_ranges[1])
-        else:
-            scale = 1.0
-
-        if shears is not None:
-            shear = random.uniform(shears[0], shears[1])
-        else:
-            shear = 0.0
-
-        return scale, shear
 
     def __call__(self, img, target):
-        scale, shear = self.get_params(self.scale, self.shear)
-        img = F.affine(img, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
-        target = F.affine(target, 0, (0, 0), scale, shear, resample=False, fillcolor=self.fillcolor)
+        angle, translations, scale, shear = T.RandomAffine.get_params((0, 0), None, self.scale, self.shear, img.size)
+        img = F.affine(img, angle, translations, scale, shear, resample=False)
+        target = F.affine(target, angle, translations, scale, shear, resample=False, fillcolor=255)
 
         return img, target
 
@@ -151,10 +144,10 @@ class RandomGaussionNoise(object):
 
 
 class Normalize(object):
-    def __init__(self, scale=1.0):
-        self.scale = scale
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
 
-    def __call__(self, img, inst):
-        img = F.normalize(img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-        return img, inst
+    def __call__(self, image, target):
+        image = F.normalize(image, mean=self.mean, std=self.std)
+        return image, target
