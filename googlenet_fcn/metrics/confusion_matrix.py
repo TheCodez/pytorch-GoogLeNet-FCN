@@ -19,13 +19,15 @@ class ConfusionMatrix(Metric):
         n = self.num_classes
         if self.confusion_matrix is None:
             self.confusion_matrix = torch.zeros((n, n), dtype=torch.int64, device=y.device)
+
         with torch.no_grad():
             k = (y >= 0) & (y < n)
             inds = n * y[k].to(torch.int64) + y_pred[k]
             self.confusion_matrix += torch.bincount(inds, minlength=n ** 2).reshape(n, n)
 
     def reset(self):
-        self.confusion_matrix = torch.zeros(self.num_classes, self.num_classes, dtype=torch.int64)
+        if self.confusion_matrix is not None:
+            self.confusion_matrix.zero_()
         self._num_examples = 0
 
     def compute(self):
