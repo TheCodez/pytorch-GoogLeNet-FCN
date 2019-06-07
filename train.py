@@ -10,11 +10,10 @@ from ignite.engine import Events, create_supervised_evaluator, Engine
 from ignite.metrics import RunningAverage, Loss
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
-from torchvision import transforms
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
-    RandomHorizontalFlip, ConvertIdToTrainId, RandomGaussionBlur, RandomAffine, RandomApply
+    RandomHorizontalFlip, ConvertIdToTrainId, RandomGaussionBlur, RandomAffine, RandomApply, Normalize
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -27,22 +26,20 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         ColorJitter(0.2, 0.2, 0.2),
         RandomGaussionBlur(),
         ToTensor(),
-        ConvertIdToTrainId()
+        ConvertIdToTrainId(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     val_joint_transforms = Compose([
         ToTensor(),
-        ConvertIdToTrainId()
+        ConvertIdToTrainId(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-    train_loader = DataLoader(CityscapesDataset(root=data_dir, split='train', joint_transform=joint_transforms,
-                                                img_transform=normalize),
+    train_loader = DataLoader(CityscapesDataset(root=data_dir, split='train', transforms=joint_transforms),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', joint_transform=val_joint_transforms,
-                                              img_transform=normalize),
+    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_joint_transforms),
                             batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
