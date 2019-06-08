@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
-from ignite.contrib.handlers.tensorboard_logger import OutputHandler
+from ignite.contrib.handlers.tensorboard_logger import OutputHandler, OptimizerParamsHandler
 from ignite.engine import Events, create_supervised_evaluator, Engine
 from ignite.metrics import RunningAverage, Loss
 from ignite.utils import convert_tensor
@@ -128,6 +128,10 @@ def run(args):
                      log_handler=OutputHandler(tag='training',
                                                metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
+
+    tb_logger.attach(trainer,
+                     log_handler=OptimizerParamsHandler(optimizer),
+                     event_name=Events.ITERATION_STARTED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation',
