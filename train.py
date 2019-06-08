@@ -67,9 +67,9 @@ def run(args):
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 
-    optimizer = optim.SGD([{'params': [p for name, p in model.named_parameters() if name[-4:] != 'bias'],
+    optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if name.endswith('weight')],
                             'lr': args.lr, 'weight_decay': 5e-4},
-                           {'params': [p for name, p in model.named_parameters() if name[-4:] == 'bias'],
+                           {'params': [param for name, param in model.named_parameters() if name.endswith('bias')],
                             'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
 
     if args.resume:
@@ -77,6 +77,7 @@ def run(args):
             print("Loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
+            args.start_iteration = checkpoint.get('iteration', 0)
             model.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("Loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
@@ -84,10 +85,10 @@ def run(args):
             print("No checkpoint found at '{}'".format(args.resume))
 
     def _prepare_batch(batch, non_blocking=True):
-        x, y = batch
+        image, target = batch
 
-        return (convert_tensor(x, device=device, non_blocking=non_blocking),
-                convert_tensor(y, device=device, non_blocking=non_blocking))
+        return (convert_tensor(image, device=device, non_blocking=non_blocking),
+                convert_tensor(target, device=device, non_blocking=non_blocking))
 
     def _update(engine, batch):
         model.train()
@@ -140,7 +141,7 @@ def run(args):
         mean_iou = iou.mean()
 
         name = 'epoch{}_mIoU={:.1f}.pth'.format(trainer.state.epoch, mean_iou)
-        file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+        file = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'iteration': engine.state.iteration,
                 'optimizer': optimizer.state_dict(), 'args': args}
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
@@ -150,17 +151,18 @@ def run(args):
     def initialize(engine):
         if args.resume:
             engine.state.epoch = args.start_epoch
+            engine.state.iteration = args.start_iteration
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
-        pbar.log_message('Start Validation - Epoch: [{}/{}]'.format(engine.state.epoch, engine.state.max_epochs))
+        pbar.log_message("Start Validation - Epoch: [{}/{}]".format(engine.state.epoch, engine.state.max_epochs))
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         loss = metrics['loss']
         iou = metrics['IoU']
         mean_iou = iou.mean()
 
-        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}'
+        pbar.log_message("Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}"
                          .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
 
     print("Start training")
@@ -183,15 +185,17 @@ if __name__ == '__main__':
     parser.add_argument('--momentum', type=float, default=0.99,
                         help='momentum')
     parser.add_argument('--seed', type=int, default=123, help='manual seed')
-    parser.add_argument('--output-dir', default='./checkpoints',
+    parser.add_argument('--output-dir', default='checkpoints',
                         help='directory to save model checkpoints')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
+    parser.add_argument('--start-iteration', default=0, type=int, metavar='N',
+                        help='manual iteration number (useful on restarts)')
     parser.add_argument('--log-interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
-    parser.add_argument("--log-dir", type=str, default="tensorboard_logs",
+    parser.add_argument("--log-dir", type=str, default="logs",
                         help="log directory for Tensorboard log output")
     parser.add_argument("--dataset-dir", type=str, default="data/cityscapes",
                         help="location of the dataset")
