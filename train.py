@@ -1,5 +1,7 @@
 import os
+import random
 from argparse import ArgumentParser
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -22,9 +24,8 @@ from googlenet_fcn.utils import save
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     joint_transforms = Compose([
         RandomHorizontalFlip(),
-        RandomApply([RandomAffine(scale=(0.9, 1.2), shear=(-10, 10))]),
+        # RandomApply([RandomAffine(scale=(0.8, 1.2), shear=(-10, 10)), RandomGaussionBlur(radius=1.0)]),
         ColorJitter(0.2, 0.2, 0.2),
-        RandomGaussionBlur(),
         ToTensor(),
         ConvertIdToTrainId(),
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -47,6 +48,7 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
 
 def run(args):
     if args.seed is not None:
+        random.seed(args.seed)
         torch.manual_seed(args.seed)
 
     num_classes = CityscapesDataset.num_classes()
@@ -123,7 +125,8 @@ def run(args):
     def _global_step_transform(engine, event_name):
         return trainer.state.iteration
 
-    tb_logger = TensorboardLogger(args.log_dir)
+    exp_name = datetime.now().strftime("%Y%m%d-%H%M%S")
+    tb_logger = TensorboardLogger(os.path.join(args.log_dir, exp_name))
     tb_logger.attach(trainer,
                      log_handler=OutputHandler(tag='training',
                                                metric_names=['loss']),
