@@ -78,7 +78,7 @@ def run(args):
         mean_iou = iou.mean()
 
         pbar.log_message("Validation results:\nLoss: {:.2e}\nmIoU: {:.1f}"
-                         .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou))
+                         .format(loss, mean_iou))
 
     print("Start validation")
     evaluator.run(val_loader, max_epochs=1)
