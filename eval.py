@@ -4,12 +4,13 @@ import torch
 import torch.nn as nn
 from ignite.contrib.handlers import ProgressBar
 from ignite.engine import Events, Engine
-from ignite.metrics import Loss, ConfusionMatrix, IoU
+from ignite.metrics import Loss
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, ConvertIdToTrainId, Normalize
+from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN, googlenet_fcn
 
 
@@ -63,7 +64,7 @@ def run(args):
 
     evaluator = Engine(_inference)
     cm = ConfusionMatrix(num_classes)
-    IoU(cm, ignore_index=0).attach(evaluator, 'IoU')
+    IoU(cm).attach(evaluator, 'IoU')
     Loss(criterion).attach(evaluator, 'loss')
 
     pbar = ProgressBar(persist=True, desc='Eval')
