@@ -32,7 +32,7 @@ def run(args):
     num_classes = CityscapesDataset.num_classes()
     if args.checkpoint:
         model = GoogLeNetFCN(num_classes)
-        model.load_state_dict(args.checkpoint)
+        model.load_state_dict(torch.load(args.checkpoint))
     else:
         model = googlenet_fcn(pretrained=True, num_classes=num_classes)
 
@@ -85,7 +85,7 @@ def run(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser('GoogLeNet FCN Eval with PyTorch')
-    parser.add_argument('--batch-size', type=int, default=10,
+    parser.add_argument('--batch-size', type=int, default=4,
                         help='input batch size for validation')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
