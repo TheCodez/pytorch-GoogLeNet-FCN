@@ -42,7 +42,7 @@ def run(args):
         model = nn.DataParallel(model)
         args.batch_size = device_count * args.batch_size
 
-    val_loader = get_data_loaders(args.dataset_dir, args.val_batch_size, args.num_workers)
+    val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.num_workers)
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255)
