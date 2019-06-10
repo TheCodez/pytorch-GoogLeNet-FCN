@@ -65,7 +65,7 @@ def run(args):
                                                 args.num_workers)
 
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss(ignore_index=255)
+    criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
     optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if name.endswith('weight')],
                             'lr': args.lr, 'weight_decay': 5e-4},
