@@ -67,7 +67,7 @@ def run(args):
                                                 args.num_workers)
 
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss(ignore_index=255)
+    criterion = nn.CrossEntropyLoss(ignore_index=255, reduction=args.reduction)
 
     optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if name.endswith('weight')],
                             'lr': args.lr, 'weight_decay': 5e-4},
@@ -208,5 +208,7 @@ if __name__ == '__main__':
                         help="location of the dataset")
     parser.add_argument('--grad-accum', type=int, default=1,
                         help='grad accumulation')
+    parser.add_argument('--reduction', type=str, default='mean',
+                        help='criterion reduction')
 
     run(parser.parse_args())
