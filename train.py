@@ -24,9 +24,9 @@ from googlenet_fcn.utils import save
 
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     joint_transforms = Compose([
-        # RandomHorizontalFlip(),
+        RandomHorizontalFlip(),
         # RandomApply([RandomAffine(scale=(0.8, 1.2), shear=(-10, 10)), RandomGaussionBlur(radius=1.0)]),
-        # ColorJitter(0.2, 0.2, 0.2),
+        # ColorJitter(0.1, 0.1, 0.1),
         ToTensor(),
         ConvertIdToTrainId(),
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
