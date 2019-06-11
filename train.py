@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId, RandomGaussionBlur, RandomAffine, RandomApply, Normalize
+from googlenet_fcn.handler.smshandler import SMSHandler
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -114,6 +115,8 @@ def run(args):
     pbar = ProgressBar(persist=True)
     pbar.attach(trainer, metric_names=['loss'])
 
+    sms = SMSHandler(args.sms)
+
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
                                                             'IoU': IoU(cm)},
@@ -154,6 +157,8 @@ def run(args):
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
         save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
 
+        sms("Got checkpoint with mIoU: {:.1f}".format(mean_iou))
+
     @trainer.on(Events.STARTED)
     def initialize(engine):
         if args.resume:
@@ -173,6 +178,7 @@ def run(args):
                          .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
 
     print("Start training")
+    sms("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
     tb_logger.close()
 
@@ -209,6 +215,8 @@ if __name__ == '__main__':
     parser.add_argument('--grad-accum', type=int, default=1,
                         help='grad accumulation')
     parser.add_argument('--reduction', type=str, default='mean',
-                        help='criterion reduction')
+                        help='criterion reduction'),
+    parser.add_argument('--sms', type=str,
+                        help='send sms on each checkpoint. Format: key secret number')
 
     run(parser.parse_args())
