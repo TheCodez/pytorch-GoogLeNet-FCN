@@ -14,9 +14,8 @@ from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
-from googlenet_fcn.datasets.transforms.transforms import Compose, ColorJitter, ToTensor, \
-    RandomHorizontalFlip, ConvertIdToTrainId, RandomGaussionBlur, RandomAffine, RandomApply, Normalize
-from googlenet_fcn.handler.smshandler import SMSHandler
+from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
+    RandomHorizontalFlip, ConvertIdToTrainId, Normalize
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -115,8 +114,6 @@ def run(args):
     pbar = ProgressBar(persist=True)
     pbar.attach(trainer, metric_names=['loss'])
 
-    sms = SMSHandler(args.sms)
-
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
                                                             'IoU': IoU(cm)},
@@ -156,8 +153,6 @@ def run(args):
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
         save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
-
-        sms("Got checkpoint with mIoU: {:.1f}".format(mean_iou))
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
