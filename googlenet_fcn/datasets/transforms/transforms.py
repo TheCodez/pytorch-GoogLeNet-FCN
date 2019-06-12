@@ -37,21 +37,6 @@ class ConvertIdToTrainId(object):
         return img, target
 
 
-class RandomApply(object):
-
-    def __init__(self, transforms, p=0.5):
-        self.transforms = transforms
-        self.p = p
-
-    def __call__(self, img, target):
-        if self.p < random.random():
-            return img, target
-
-        for t in self.transforms:
-            img, target = t(img, target)
-        return img, target
-
-
 class Resize(object):
 
     def __init__(self, new_size):
@@ -121,26 +106,33 @@ class RandomGaussionBlur(object):
 
 
 class RandomAffine(object):
-    def __init__(self, scale=None, shear=None):
+    def __init__(self, p=0.5, scale=None, shear=None):
+        self.p = p
         self.scale = scale
         self.shear = shear
 
     def __call__(self, img, target):
-        angle, translations, scale, shear = T.RandomAffine.get_params((0, 0), None, self.scale, self.shear, img.size)
-        img = F.affine(img, angle, translations, scale, shear, resample=False)
-        target = F.affine(target, angle, translations, scale, shear, resample=False, fillcolor=255)
+        if random.random() < self.p:
+            angle, translations, scale, shear = T.RandomAffine.get_params((0, 0), None, self.scale, self.shear,
+                                                                          img.size)
+            img = F.affine(img, angle, translations, scale, shear, resample=False)
+            target = F.affine(target, angle, translations, scale, shear, resample=False, fillcolor=255)
 
         return img, target
 
 
 class RandomGaussionNoise(object):
-    def __init__(self, scale=0.02):
-        self.scale = scale
+    def __init__(self, p=0.5, mean=0.0, std=0.1):
+        self.p = p
+        self.mean = mean
+        self.std = std
 
-    def __call__(self, img, inst):
-        img = img + self.scale * torch.randn_like(img)
+    def __call__(self, img, target):
+        if random.random() < self.p:
+            noise = img.clone().normal_(self.mean, self.std)
+            img = img + noise
 
-        return img, inst
+        return img, target
 
 
 class Normalize(object):
@@ -150,4 +142,27 @@ class Normalize(object):
 
     def __call__(self, image, target):
         image = F.normalize(image, mean=self.mean, std=self.std)
+        return image, target
+
+
+def pad_if_smaller(img, size, fill=0):
+    min_size = min(img.size)
+    if min_size < size:
+        ow, oh = img.size
+        padh = size - oh if oh < size else 0
+        padw = size - ow if ow < size else 0
+        img = F.pad(img, (0, 0, padw, padh), fill=fill)
+    return img
+
+
+class RandomCrop(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, image, target):
+        image = pad_if_smaller(image, self.size)
+        target = pad_if_smaller(target, self.size, fill=255)
+        crop_params = T.RandomCrop.get_params(image, (self.size, self.size))
+        image = F.crop(image, *crop_params)
+        target = F.crop(target, *crop_params)
         return image, target

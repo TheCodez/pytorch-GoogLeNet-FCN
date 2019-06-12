@@ -15,7 +15,8 @@ from torch.utils.data import DataLoader
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
-    RandomHorizontalFlip, ConvertIdToTrainId, Normalize
+    RandomHorizontalFlip, ConvertIdToTrainId, Normalize, RandomGaussionNoise, ColorJitter, RandomGaussionBlur, \
+    RandomAffine
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
@@ -24,11 +25,13 @@ from googlenet_fcn.utils import save
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     joint_transforms = Compose([
         RandomHorizontalFlip(),
-        # RandomApply([RandomAffine(scale=(0.8, 1.2), shear=(-10, 10)), RandomGaussionBlur(radius=1.0)]),
-        # ColorJitter(0.1, 0.1, 0.1),
+        RandomAffine(shear=(-8, 8)),
+        RandomGaussionBlur(radius=2.0),
+        ColorJitter(hue=0.1),
         ToTensor(),
         ConvertIdToTrainId(),
-        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        RandomGaussionNoise()
     ])
 
     val_joint_transforms = Compose([
@@ -210,7 +213,5 @@ if __name__ == '__main__':
                         help='grad accumulation')
     parser.add_argument('--reduction', type=str, default='mean',
                         help='criterion reduction'),
-    parser.add_argument('--sms', type=str,
-                        help='send sms on each checkpoint. Format: key secret number')
 
     run(parser.parse_args())
