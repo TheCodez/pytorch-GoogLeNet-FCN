@@ -142,7 +142,7 @@ def run(args):
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
         if is_best:
-            save(model.cpu().state_dict(), args.output_dir, 'model_{}'.format(name))
+            save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
