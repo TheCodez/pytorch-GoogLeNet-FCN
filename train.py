@@ -1,5 +1,4 @@
 import os
-import os
 import random
 import sys
 from argparse import ArgumentParser
