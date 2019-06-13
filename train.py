@@ -1,4 +1,5 @@
 import os
+import os
 import random
 import sys
 from argparse import ArgumentParser
@@ -68,7 +69,7 @@ def run(args):
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
                                                 args.num_workers)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=255, reduction=args.reduction)
+    criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
     optimizer = optim.SGD([{'params': filter(lambda p: p[0].endswith('weight'), model.named_parameters())},
                            {'params': filter(lambda p: p[0].endswith('bias'), model.named_parameters()),
@@ -192,8 +193,6 @@ if __name__ == '__main__':
                         help='directory to save model checkpoints')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument('--log-interval', type=int, default=10,
-                        help='how many batches to wait before logging training status')
     parser.add_argument('--log-dir', type=str, default='logs',
                         help='log directory for Tensorboard log output')
     parser.add_argument('--dataset-dir', type=str, default='data/cityscapes',
