@@ -57,6 +57,7 @@ def run(args):
     num_classes = CityscapesDataset.num_classes()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = GoogLeNetFCN(num_classes)
+    model.init_from_googlenet()
 
     device_count = torch.cuda.device_count()
     if device_count > 1:
@@ -64,6 +65,8 @@ def run(args):
         model = nn.DataParallel(model)
         args.batch_size = device_count * args.batch_size
         args.val_batch_size = device_count * args.val_batch_size
+
+    model = model.to(device)
 
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
                                                 args.num_workers)
@@ -88,10 +91,6 @@ def run(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
             sys.exit()
-    else:
-        model.init_from_googlenet()
-
-    model = model.to(device)
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
 
