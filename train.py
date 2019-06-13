@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 from argparse import ArgumentParser
 from datetime import datetime
 
@@ -8,9 +9,8 @@ import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler, OptimizerParamsHandler
-from ignite.engine import Events, create_supervised_evaluator, Engine
+from ignite.engine import Events, create_supervised_evaluator, create_supervised_trainer
 from ignite.metrics import RunningAverage, Loss
-from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset
@@ -23,7 +23,7 @@ from googlenet_fcn.utils import save
 
 
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
-    joint_transforms = Compose([
+    transform = Compose([
         RandomHorizontalFlip(),
         RandomAffine(shear=(-8, 8)),
         RandomGaussionBlur(radius=2.0),
@@ -34,16 +34,16 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         RandomGaussionNoise()
     ])
 
-    val_joint_transforms = Compose([
+    val_transform = Compose([
         ToTensor(),
         ConvertIdToTrainId(),
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train_loader = DataLoader(CityscapesDataset(root=data_dir, split='train', transforms=joint_transforms),
+    train_loader = DataLoader(CityscapesDataset(root=data_dir, split='train', transforms=transform),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_joint_transforms),
+    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_transform),
                             batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
@@ -57,7 +57,6 @@ def run(args):
     num_classes = CityscapesDataset.num_classes()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = GoogLeNetFCN(num_classes)
-    model.init_from_googlenet()
 
     device_count = torch.cuda.device_count()
     if device_count > 1:
@@ -69,13 +68,12 @@ def run(args):
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
                                                 args.num_workers)
 
-    model = model.to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=255, reduction=args.reduction)
 
-    optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if name.endswith('weight')],
-                            'lr': args.lr, 'weight_decay': 5e-4},
-                           {'params': [param for name, param in model.named_parameters() if name.endswith('bias')],
-                            'lr': args.lr * 2}], momentum=args.momentum, lr=args.lr)
+    optimizer = optim.SGD([{'params': filter(lambda p: p[0].endswith('weight'), model.named_parameters())},
+                           {'params': filter(lambda p: p[0].endswith('bias'), model.named_parameters()),
+                            'lr': args.lr * 2, 'weight_decay': 0}],
+                          lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     if args.resume:
         if os.path.isfile(args.resume):
@@ -83,33 +81,19 @@ def run(args):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             args.start_iteration = checkpoint.get('iteration', 0)
+            best_iou = checkpoint.get('bestIoU', 0)
             model.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("Loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+            print("Loaded checkpoint '{}' (Epoch {})".format(args.resume, checkpoint['epoch']))
         else:
             print("No checkpoint found at '{}'".format(args.resume))
+            sys.exit()
+    else:
+        model.init_from_googlenet()
 
-    def _prepare_batch(batch, non_blocking=True):
-        image, target = batch
+    model = model.to(device)
 
-        return (convert_tensor(image, device=device, non_blocking=non_blocking),
-                convert_tensor(target, device=device, non_blocking=non_blocking))
-
-    def _update(engine, batch):
-        model.train()
-
-        if engine.state.iteration % args.grad_accum == 0:
-            optimizer.zero_grad()
-        image, target = _prepare_batch(batch)
-        pred = model(image)
-        loss = criterion(pred, target) / args.grad_accum
-        loss.backward()
-        if engine.state.iteration % args.grad_accum == 0:
-            optimizer.step()
-
-        return loss.item()
-
-    trainer = Engine(_update)
+    trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
 
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
@@ -150,18 +134,25 @@ def run(args):
         iou = engine.state.metrics['IoU'] * 100.0
         mean_iou = iou.mean()
 
+        is_best = iou > trainer.state.best_iou
+        trainer.state.best_iou = max(iou, trainer.state.best_iou)
+
         name = 'epoch{}_mIoU={:.1f}.pth'.format(trainer.state.epoch, mean_iou)
         file = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'iteration': engine.state.iteration,
-                'optimizer': optimizer.state_dict(), 'args': args}
+                'optimizer': optimizer.state_dict(), 'args': args, 'bestIoU': trainer.state.best_iou}
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
-        save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
+        if is_best:
+            save(model.cpu().state_dict(), args.output_dir, 'model_{}'.format(name))
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
         if args.resume:
             engine.state.epoch = args.start_epoch
             engine.state.iteration = args.start_iteration
+            engine.state.best_iou = best_iou
+        else:
+            engine.state.best_iou = 0.0
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
@@ -188,30 +179,24 @@ if __name__ == '__main__':
                         help='input batch size for validation')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
-    parser.add_argument('--epochs', type=int, default=150,
+    parser.add_argument('--epochs', type=int, default=250,
                         help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1e-10,
                         help='learning rate')
     parser.add_argument('--momentum', type=float, default=0.99,
+                        help='momentum')
+    parser.add_argument('--weight-decay', '--wd', type=float, default=5e-4,
                         help='momentum')
     parser.add_argument('--seed', type=int, default=123, help='manual seed')
     parser.add_argument('--output-dir', default='checkpoints',
                         help='directory to save model checkpoints')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
-                        help='manual epoch number (useful on restarts)')
-    parser.add_argument('--start-iteration', default=0, type=int, metavar='N',
-                        help='manual iteration number (useful on restarts)')
     parser.add_argument('--log-interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
-    parser.add_argument("--log-dir", type=str, default="logs",
-                        help="log directory for Tensorboard log output")
-    parser.add_argument("--dataset-dir", type=str, default="data/cityscapes",
-                        help="location of the dataset")
-    parser.add_argument('--grad-accum', type=int, default=1,
-                        help='grad accumulation')
-    parser.add_argument('--reduction', type=str, default='mean',
-                        help='criterion reduction'),
+    parser.add_argument('--log-dir', type=str, default='logs',
+                        help='log directory for Tensorboard log output')
+    parser.add_argument('--dataset-dir', type=str, default='data/cityscapes',
+                        help='location of the dataset')
 
     run(parser.parse_args())
