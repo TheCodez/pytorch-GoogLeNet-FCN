@@ -70,8 +70,8 @@ def run(args):
 
     criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
-    optimizer = optim.SGD([{'params': filter(lambda p: p[0].endswith('weight'), model.named_parameters())},
-                           {'params': filter(lambda p: p[0].endswith('bias'), model.named_parameters()),
+    optimizer = optim.SGD([{'params': [param for name, param in model.named_parameters() if name.endswith('weight')]},
+                           {'params': [param for name, param in model.named_parameters() if name.endswith('bias')],
                             'lr': args.lr * 2, 'weight_decay': 0}],
                           lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
