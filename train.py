@@ -25,7 +25,7 @@ from googlenet_fcn.utils import save
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     transform = Compose([
         RandomHorizontalFlip(),
-        RandomAffine(shear=(-8, 8)),
+        RandomAffine(scale=(1.0, 1.4), shear=(-8, 8)),
         RandomGaussionBlur(radius=2.0),
         ColorJitter(hue=0.1),
         ToTensor(),
@@ -81,7 +81,7 @@ def run(args):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             args.start_iteration = checkpoint.get('iteration', 0)
-            best_iou = checkpoint.get('bestIoU', 0)
+            best_iou = checkpoint.get('bestIoU', 0.0)
             model.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("Loaded checkpoint '{}' (Epoch {})".format(args.resume, checkpoint['epoch']))
