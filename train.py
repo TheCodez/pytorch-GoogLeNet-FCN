@@ -133,8 +133,8 @@ def run(args):
         iou = engine.state.metrics['IoU'] * 100.0
         mean_iou = iou.mean()
 
-        is_best = iou > trainer.state.best_iou
-        trainer.state.best_iou = max(iou, trainer.state.best_iou)
+        is_best = mean_iou.item() > trainer.state.best_iou
+        trainer.state.best_iou = max(mean_iou.item(), trainer.state.best_iou)
 
         name = 'epoch{}_mIoU={:.1f}.pth'.format(trainer.state.epoch, mean_iou)
         file = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'iteration': engine.state.iteration,
