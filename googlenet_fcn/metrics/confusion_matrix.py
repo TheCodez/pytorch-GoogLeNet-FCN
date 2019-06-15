@@ -46,3 +46,9 @@ def IoU(cm):
 
 def mIoU(cm):
     return IoU(cm=cm).mean()
+
+
+def cmAccuracy(cm):
+    # Increase floating point precision
+    cm = cm.type(torch.float64)
+    return cm.diag().sum() / (cm.sum() + 1e-15)

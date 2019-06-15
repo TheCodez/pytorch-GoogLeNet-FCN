@@ -17,7 +17,7 @@ from googlenet_fcn.datasets.cityscapes import CityscapesDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId, Normalize, RandomGaussionNoise, ColorJitter, RandomGaussionBlur, \
     RandomAffine
-from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
+from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU, cmAccuracy
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
 from googlenet_fcn.utils import save
 
@@ -102,7 +102,8 @@ def run(args):
 
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
-                                                            'IoU': IoU(cm)},
+                                                            'IoU': IoU(cm),
+                                                            'acc': cmAccuracy(cm)},
                                             device=device, non_blocking=True)
 
     pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
@@ -124,7 +125,7 @@ def run(args):
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation',
-                                               metric_names=['loss', 'IoU'],
+                                               metric_names=['loss', 'IoU', 'acc'],
                                                global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
@@ -160,10 +161,11 @@ def run(args):
         metrics = evaluator.state.metrics
         loss = metrics['loss']
         iou = metrics['IoU']
+        acc = metrics['acc']
         mean_iou = iou.mean()
 
-        pbar.log_message("Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}"
-                         .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
+        pbar.log_message("Validation results - Epoch: [{}/{}]: Loss: {:.2e}, Accuracy: {:.1f}, mIoU: {:.1f}"
+                         .format(engine.state.epoch, engine.state.max_epochs, loss, acc * 100.0, mean_iou * 100.0))
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
