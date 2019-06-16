@@ -27,7 +27,7 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         RandomHorizontalFlip(),
         RandomAffine(scale=(0.6, 1.4), shear=(-10, 10)),
         RandomGaussionBlur(radius=2.0),
-        ColorJitter(hue=0.1),
+        ColorJitter(0.1, 0.1, 0.1, 0.1),
         ToTensor(),
         ConvertIdToTrainId(),
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
