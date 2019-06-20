@@ -102,16 +102,11 @@ class RandomResize(object):
 
 
 class ColorJitter(object):
-    def __init__(self, brightness=None, contrast=None, saturation=None, hue=None):
-        self.brightness = brightness
-        self.contrast = contrast
-        self.saturation = saturation
-        self.hue = hue
+    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0):
+        self.transform = T.ColorJitter(brightness, contrast, saturation, hue)
 
     def __call__(self, img, target):
-        transform = T.ColorJitter.get_params(self.brightness, self.contrast,
-                                             self.saturation, self.hue)
-        img = transform(img)
+        img = self.transform(img)
 
         return img, target
 
