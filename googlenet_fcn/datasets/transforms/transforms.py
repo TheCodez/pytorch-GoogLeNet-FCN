@@ -82,13 +82,36 @@ class RandomHorizontalFlip(object):
         return img, target
 
 
+class RandomResize(object):
+    def __init__(self, min_size, max_size=None):
+        self.min_size = min_size
+        if max_size is None:
+            max_size = min_size
+        self.max_size = max_size
+
+    def __call__(self, image, target):
+        min_h, min_w = self.min_size
+        max_h, max_w = self.max_size
+
+        h = random.randint(int(min_h), int(max_h))
+        w = random.randint(int(min_w), int(max_w))
+
+        image = F.resize(image, (h, w))
+        target = F.resize(target, (h, w), interpolation=Image.NEAREST)
+        return image, target
+
+
 class ColorJitter(object):
-    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0):
-        from torchvision import transforms
-        self.transform = transforms.ColorJitter(brightness, contrast, saturation, hue)
+    def __init__(self, brightness=None, contrast=None, saturation=None, hue=None):
+        self.brightness = brightness
+        self.contrast = contrast
+        self.saturation = saturation
+        self.hue = hue
 
     def __call__(self, img, target):
-        img = self.transform(img)
+        transform = T.ColorJitter.get_params(self.brightness, self.contrast,
+                                             self.saturation, self.hue)
+        img = transform(img)
 
         return img, target
 
@@ -106,15 +129,17 @@ class RandomGaussionBlur(object):
 
 
 class RandomAffine(object):
-    def __init__(self, p=0.5, scale=None, shear=None):
+    def __init__(self, p=0.5, degress=(0, 0), translate=None, scale=None, shear=None):
         self.p = p
+        self.degrees = degress
+        self.translate = translate
         self.scale = scale
         self.shear = shear
 
     def __call__(self, img, target):
         if random.random() < self.p:
-            angle, translations, scale, shear = T.RandomAffine.get_params((0, 0), None, self.scale, self.shear,
-                                                                          img.size)
+            angle, translations, scale, shear = T.RandomAffine.get_params(self.degrees, self.translate, self.scale,
+                                                                          self.shear, img.size)
             img = F.affine(img, angle, translations, scale, shear, resample=False)
             target = F.affine(target, angle, translations, scale, shear, resample=False, fillcolor=255)
 
