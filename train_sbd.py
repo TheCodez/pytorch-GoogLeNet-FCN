@@ -19,10 +19,10 @@ from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
 from googlenet_fcn.datasets.voc import VOC
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
-from googlenet_fcn.utils import save, freeze_batchnorm
+from googlenet_fcn.utils import save, freeze_batchnorm, collate_fn
 
 
-def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
+def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers, download):
     transform = Compose([
         # RandomHorizontalFlip(),
         ToTensor(),
@@ -34,12 +34,14 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train_loader = DataLoader(SBDataset(root=data_dir, image_set='train', mode='segmentation', download=True,
+    train_loader = DataLoader(SBDataset(root=data_dir, image_set='train', mode='segmentation', download=download,
                                         transforms=transform),
-                              batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
+                              batch_size=batch_size, shuffle=True, num_workers=num_workers, collate_fn=collate_fn,
+                              pin_memory=True)
 
-    val_loader = DataLoader(VOC(root=data_dir, download=True, transforms=val_transform),
-                            batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
+    val_loader = DataLoader(VOC(root=data_dir, download=download, transforms=val_transform),
+                            batch_size=val_batch_size, shuffle=False, num_workers=num_workers, collate_fn=collate_fn,
+                            pin_memory=True)
 
     return train_loader, val_loader
 
@@ -64,7 +66,7 @@ def run(args):
     model = model.to(device)
 
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
-                                                args.num_workers)
+                                                args.num_workers, args.download)
 
     criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
@@ -195,5 +197,7 @@ if __name__ == '__main__':
                         help='log directory for Tensorboard log output')
     parser.add_argument('--dataset-dir', type=str, default='data/cityscapes',
                         help='location of the dataset')
+    parser.add_argument('--download', type=bool, default=True, action='store_true',
+                        help='download dataset')
 
     run(parser.parse_args())
