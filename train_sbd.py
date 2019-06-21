@@ -186,7 +186,7 @@ if __name__ == '__main__':
                         help='momentum')
     parser.add_argument('--weight-decay', '--wd', type=float, default=5e-4,
                         help='momentum')
-    parser.add_argument('--freeze-bn', type=bool, default=True,
+    parser.add_argument('--freeze-bn', action='store_true', default=True,
                         help='freeze batch norm during training')
     parser.add_argument('--seed', type=int, default=123, help='manual seed')
     parser.add_argument('--output-dir', default='checkpoints',
@@ -197,7 +197,7 @@ if __name__ == '__main__':
                         help='log directory for Tensorboard log output')
     parser.add_argument('--dataset-dir', type=str, default='data/cityscapes',
                         help='location of the dataset')
-    parser.add_argument('--download', type=bool, default=True, action='store_true',
+    parser.add_argument('--download', default=True, action='store_true',
                         help='download dataset')
 
     run(parser.parse_args())
