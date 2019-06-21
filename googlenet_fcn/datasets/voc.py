@@ -24,7 +24,7 @@ class VOC(VOCSegmentation):
             raise RuntimeError('Dataset not found or corrupted.' +
                                ' You can use download=True to download it')
 
-        split_f = os.path.join(voc_root, 'seg11valid.txt')
+        split_f = os.path.join(self.root, 'seg11valid.txt')
 
         with open(os.path.join(split_f), "r") as f:
             file_names = [x.strip() for x in f.readlines()]
