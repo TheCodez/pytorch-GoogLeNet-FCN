@@ -1,3 +1,5 @@
+import types
+
 import numpy as np
 
 import torch
@@ -6,42 +8,58 @@ import torch.nn as nn
 from torchvision import models
 from torchvision.models.googlenet import BasicConv2d, Inception
 
+pretrained_models = {
+    'cityscapes': {
+        'url': '',
+        'num_classes': 19
+    },
+    'voc': {
+        'url': '',
+        'num_classes': 21
+    }
+}
 
-def googlenet_fcn(pretrained=False, num_classes=19):
+
+def googlenet_fcn(pretrained=None, num_classes=19):
     """Constructs a FCN using GoogLeNet.
 
     Args:
-        pretrained (bool): If True, returns a pre-trained model
+        pretrained (str, optional): If not ``None``, returns a pre-trained model. Possible values: ``cityscapes``
+            and ``voc`` .
         num_classes (int): number of output classes
     """
+    if pretrained is not None:
+        model = GoogLeNetFCN(pretrained_models[pretrained]['num_classes'])
+        model.load_state_dict(hub.load_state_dict_from_url(pretrained_models[pretrained]['url']))
+        return model
+
     model = GoogLeNetFCN(num_classes)
-    if pretrained:
-        model.load_state_dict(hub.load_state_dict_from_url(''))
     return model
 
 
 class GoogLeNetFCN(nn.Module):
 
-    def __init__(self, num_classes=19):
+    def __init__(self, num_classes=19, transform_input=True):
         super(GoogLeNetFCN, self).__init__()
+        self.transform_input = transform_input
 
         self.conv1 = BasicConv2d(3, 64, kernel_size=7, stride=2, padding=3)
-        self.maxpool1 = nn.MaxPool2d(3, stride=2, ceil_mode=True)
+        self.maxpool1 = nn.MaxPool2d(3, stride=2, padding=1)
         self.conv2 = BasicConv2d(64, 64, kernel_size=1)
         self.conv3 = BasicConv2d(64, 192, kernel_size=3, padding=1)
 
-        self.maxpool2 = nn.MaxPool2d(3, stride=2, ceil_mode=True)
+        self.maxpool2 = nn.MaxPool2d(3, stride=2, padding=1)
         self.inception3a = Inception(192, 64, 96, 128, 16, 32, 32)
         self.inception3b = Inception(256, 128, 128, 192, 32, 96, 64)
 
-        self.maxpool3 = nn.MaxPool2d(3, stride=2, ceil_mode=True)
+        self.maxpool3 = nn.MaxPool2d(3, stride=2, padding=1)
         self.inception4a = Inception(480, 192, 96, 208, 16, 48, 64)
         self.inception4b = Inception(512, 160, 112, 224, 24, 64, 64)
         self.inception4c = Inception(512, 128, 128, 256, 24, 64, 64)
         self.inception4d = Inception(512, 112, 144, 288, 32, 64, 64)
         self.inception4e = Inception(528, 256, 160, 320, 32, 128, 128)
 
-        self.maxpool4 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+        self.maxpool4 = nn.MaxPool2d(2, stride=2, padding=1)
         self.inception5a = Inception(832, 256, 160, 320, 32, 128, 128)
         self.inception5b = Inception(832, 384, 192, 384, 48, 128, 128)
 
@@ -68,14 +86,16 @@ class GoogLeNetFCN(nn.Module):
     def init_from_googlenet(self):
         googlenet = models.googlenet(pretrained=True)
         self.load_state_dict(googlenet.state_dict(), strict=False)
+        self.transform_input = True
 
     def forward(self, x):
         size = x.size()
 
-        x_ch0 = torch.unsqueeze(x[:, 0], 1) * (0.229 / 0.5) + (0.485 - 0.5) / 0.5
-        x_ch1 = torch.unsqueeze(x[:, 1], 1) * (0.224 / 0.5) + (0.456 - 0.5) / 0.5
-        x_ch2 = torch.unsqueeze(x[:, 2], 1) * (0.225 / 0.5) + (0.406 - 0.5) / 0.5
-        x = torch.cat((x_ch0, x_ch1, x_ch2), 1)
+        if self.transform_input:
+            x_ch0 = torch.unsqueeze(x[:, 0], 1) * (0.229 / 0.5) + (0.485 - 0.5) / 0.5
+            x_ch1 = torch.unsqueeze(x[:, 1], 1) * (0.224 / 0.5) + (0.456 - 0.5) / 0.5
+            x_ch2 = torch.unsqueeze(x[:, 2], 1) * (0.225 / 0.5) + (0.406 - 0.5) / 0.5
+            x = torch.cat((x_ch0, x_ch1, x_ch2), 1)
 
         x = self.conv1(x)
         x = self.maxpool1(x)
@@ -130,12 +150,13 @@ def get_upsampling_weight(channels, kernel_size):
 
 
 if __name__ == '__main__':
-    num_classes, width, height = 20, 224, 224
+    num_classes, width, height = 20, 1024, 512
 
     model = GoogLeNetFCN(num_classes)  # .to('cuda')
     inp = torch.randn(1, 3, height, width)  # .to('cuda')
 
     sem = model(inp)
+    print(sem.size())
     assert sem.size() == torch.Size([1, num_classes, height, width])
 
     print('Pass size check.')
