@@ -197,7 +197,7 @@ if __name__ == '__main__':
                         help='log directory for Tensorboard log output')
     parser.add_argument('--dataset-dir', type=str, default='data/cityscapes',
                         help='location of the dataset')
-    parser.add_argument('--download', default=True, action='store_true',
+    parser.add_argument('--download', action='store_true',
                         help='download dataset')
 
     run(parser.parse_args())
