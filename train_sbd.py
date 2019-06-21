@@ -34,8 +34,8 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers, download
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train_loader = DataLoader(SBDataset(root=data_dir, image_set='train', mode='segmentation', download=download,
-                                        transforms=transform),
+    train_loader = DataLoader(SBDataset(root=os.path.join(data_dir, 'sbd'), image_set='train', mode='segmentation',
+                                        download=download, transforms=transform),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, collate_fn=collate_fn,
                               pin_memory=True)
 
