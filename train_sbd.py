@@ -90,6 +90,7 @@ def run(args):
             sys.exit()
 
     if args.freeze_bn:
+        print("Freezing batch norm")
         model = freeze_batchnorm(model)
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
@@ -186,7 +187,7 @@ if __name__ == '__main__':
                         help='momentum')
     parser.add_argument('--weight-decay', '--wd', type=float, default=5e-4,
                         help='momentum')
-    parser.add_argument('--freeze-bn', action='store_true', default=True,
+    parser.add_argument('--freeze-bn', action='store_true',
                         help='freeze batch norm during training')
     parser.add_argument('--seed', type=int, default=123, help='manual seed')
     parser.add_argument('--output-dir', default='checkpoints',
