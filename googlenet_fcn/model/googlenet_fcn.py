@@ -116,11 +116,11 @@ class GoogLeNetFCN(nn.Module):
         inception5b = self.inception5b(x)
 
         score5b = self.score5b(inception5b)
-        score4e = self.score4e(inception4e)
+        score4e = self.score4e(inception4e * 0.01)
         semantics = self.upscore2(score5b)
         semantics = semantics[:, :, 1:1 + score4e.size(2), 1:1 + score4e.size(3)]
         semantics += score4e
-        score3b = self.score3b(inception3b)
+        score3b = self.score3b(inception3b * 0.0001)
         semantics = self.upscore4(semantics)
         semantics = semantics[:, :, 1:1 + score3b.size(2), 1:1 + score3b.size(3)]
         semantics += score3b
