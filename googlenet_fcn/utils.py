@@ -52,12 +52,11 @@ def collate_fn(batch):
 def freeze_batchnorm(module):
     def train(self, mode=True):
         self.training = mode
-        for m in self.children():
-            m.train(mode)
-
         for m in self.modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.eval()
+            elif m != self:
+                m.train(mode)
         return self
 
     module.train = types.MethodType(train, module)
