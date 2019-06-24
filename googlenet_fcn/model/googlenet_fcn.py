@@ -59,7 +59,7 @@ class GoogLeNetFCN(nn.Module):
         self.inception4d = Inception(512, 112, 144, 288, 32, 64, 64)
         self.inception4e = Inception(528, 256, 160, 320, 32, 128, 128)
 
-        self.maxpool4 = nn.MaxPool2d(2, stride=2, padding=1)
+        self.maxpool4 = nn.MaxPool2d(2, stride=2)
         self.inception5a = Inception(832, 256, 160, 320, 32, 128, 128)
         self.inception5b = Inception(832, 384, 192, 384, 48, 128, 128)
 
@@ -116,11 +116,11 @@ class GoogLeNetFCN(nn.Module):
         inception5b = self.inception5b(x)
 
         score5b = self.score5b(inception5b)
-        score4e = self.score4e(inception4e * 0.01)
+        score4e = self.score4e(inception4e)
         semantics = self.upscore2(score5b)
         semantics = semantics[:, :, 1:1 + score4e.size(2), 1:1 + score4e.size(3)]
         semantics += score4e
-        score3b = self.score3b(inception3b * 0.0001)
+        score3b = self.score3b(inception3b)
         semantics = self.upscore4(semantics)
         semantics = semantics[:, :, 1:1 + score3b.size(2), 1:1 + score3b.size(3)]
         semantics += score3b
@@ -150,13 +150,14 @@ def get_upsampling_weight(channels, kernel_size):
 
 
 if __name__ == '__main__':
-    num_classes, width, height = 20, 1024, 512
+    num_classes, width, height = 20, 2048, 1024
 
     model = GoogLeNetFCN(num_classes)  # .to('cuda')
     inp = torch.randn(1, 3, height, width)  # .to('cuda')
 
-    sem = model(inp)
-    print(sem.size())
-    assert sem.size() == torch.Size([1, num_classes, height, width])
+    with torch.no_grad():
+        sem = model(inp)
+        print(sem.size())
+        assert sem.size() == torch.Size([1, num_classes, height, width])
 
     print('Pass size check.')
