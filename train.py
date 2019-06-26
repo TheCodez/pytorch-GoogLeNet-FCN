@@ -13,25 +13,25 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import RunningAverage, Loss
 from torch.utils.data import DataLoader
 
-from googlenet_fcn.datasets.cityscapes import CityscapesDataset
+from googlenet_fcn.datasets.cityscapes import CityscapesDataset, FineCoarseDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
     RandomHorizontalFlip, ConvertIdToTrainId, Normalize, RandomGaussionNoise, ColorJitter, RandomGaussionBlur, \
     RandomAffine
 from googlenet_fcn.metrics.confusion_matrix import ConfusionMatrix, IoU, cmAccuracy
 from googlenet_fcn.model.googlenet_fcn import GoogLeNetFCN
-from googlenet_fcn.utils import save
+from googlenet_fcn.utils import save, freeze_batchnorm
 
 
-def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
+def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers, include_coarse):
     transform = Compose([
         RandomHorizontalFlip(),
-        RandomAffine(degress=(-10, 10), scale=(0.6, 2.0), shear=(-10, 10)),
+        RandomAffine(translate=(0.1, 0.1), scale=(0.6, 2.0), shear=(-10, 10)),
         RandomGaussionBlur(radius=2.0),
         ColorJitter(0.1, 0.1, 0.1, 0.1),
         ToTensor(),
-        ConvertIdToTrainId(),
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        RandomGaussionNoise()
+        RandomGaussionNoise(),
+        ConvertIdToTrainId()
     ])
 
     val_transform = Compose([
@@ -40,8 +40,15 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
         Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train_loader = DataLoader(CityscapesDataset(root=data_dir, split='train', transforms=transform),
-                              batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
+    fine = CityscapesDataset(root=data_dir, split='train', mode='fine', transforms=transform)
+
+    if include_coarse:
+        coarse = CityscapesDataset(root=data_dir, split='train_extra', mode='coarse', transforms=transform)
+        train_loader = DataLoader(FineCoarseDataset(fine, coarse), batch_size=batch_size, shuffle=True,
+                                  num_workers=num_workers, pin_memory=True)
+    else:
+        train_loader = DataLoader(fine, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+                                  pin_memory=True)
 
     val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_transform),
                             batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
@@ -69,7 +76,7 @@ def run(args):
     model = model.to(device)
 
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
-                                                args.num_workers)
+                                                args.num_workers, args.coarse)
 
     criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
@@ -91,6 +98,9 @@ def run(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
             sys.exit()
+
+    if args.freeze_bn:
+        model = freeze_batchnorm(model)
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
 
@@ -188,6 +198,10 @@ if __name__ == '__main__':
                         help='momentum')
     parser.add_argument('--weight-decay', '--wd', type=float, default=5e-4,
                         help='momentum')
+    parser.add_argument('--coarse', action='store_true',
+                        help='include coarse data')
+    parser.add_argument('--freeze-bn', action='store_true',
+                        help='freeze batch norm during training')
     parser.add_argument('--seed', type=int, default=123, help='manual seed')
     parser.add_argument('--output-dir', default='checkpoints',
                         help='directory to save model checkpoints')

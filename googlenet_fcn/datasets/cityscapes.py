@@ -1,24 +1,28 @@
 import torch
-import torchvision
+import torch.utils.data as data
 import torchvision.datasets as datasets
-
-#from googlenet_fcn.datasets.transforms.transforms import Resize, RandomHorizontalFlip, Compose, ToTensor
+import torchvision.transforms.functional as F
 
 
 class CityscapesDataset(datasets.Cityscapes):
 
-    def __init__(self, root, split='train', mode='fine', transforms=None):
-        super(CityscapesDataset, self).__init__(root, split, mode, target_type='semantic')
+    def __init__(self, root, split='train', mode='fine', test=False, transforms=None):
+        super(CityscapesDataset, self).__init__(root, split, mode, target_type=['semantic', 'color'])
 
+        self.test = test
         self.transforms = transforms
 
     def __getitem__(self, index):
-        image, target = super(CityscapesDataset, self).__getitem__(index)
+        image, (target, color) = super(CityscapesDataset, self).__getitem__(index)
 
         if self.transforms:
             image, target = self.transforms(image, target)
 
-        return image, target
+        if self.test:
+            color = F.to_tensor(color)
+            return image, target, color
+        else:
+            return image, target
 
     @staticmethod
     def convert_id_to_train_id(target):
@@ -64,3 +68,25 @@ class CityscapesDataset(datasets.Cityscapes):
     @staticmethod
     def num_classes():
         return len([cls for cls in CityscapesDataset.classes if not cls.ignore_in_eval])
+
+
+class FineCoarseDataset(data.Dataset):
+
+    def __init__(self, fine, coarse):
+        self.coarse = coarse
+        self.fine = fine
+
+        self.use_fine = True
+
+    def __getitem__(self, index):
+        if self.use_fine:
+            idx = index % len(self.fine)
+            ret = self.fine[idx]
+        else:
+            ret = self.coarse[index]
+
+        self.use_fine = not self.use_fine
+        return ret
+
+    def __len__(self):
+        return len(self.coarse)
