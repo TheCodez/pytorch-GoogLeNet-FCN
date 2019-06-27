@@ -25,7 +25,7 @@ from googlenet_fcn.utils import save, freeze_batchnorm
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers, include_coarse):
     transform = Compose([
         RandomHorizontalFlip(),
-        RandomAffine(translate=(0.1, 0.1), scale=(0.6, 2.0), shear=(-10, 10)),
+        RandomAffine(translate=(0.1, 0.1), scale=(0.7, 2.0), shear=(-10, 10)),
         RandomGaussionBlur(radius=2.0),
         ColorJitter(0.1, 0.1, 0.1, 0.1),
         ToTensor(),
