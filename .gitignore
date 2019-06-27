@@ -63,7 +63,7 @@ docs/_build/
 
 
 # Datasets folder
-data/cityscapes
+data/
 
 # PyCharm
 .idea/
