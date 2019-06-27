@@ -76,17 +76,18 @@ class FineCoarseDataset(data.Dataset):
         self.coarse = coarse
         self.fine = fine
 
-        self.use_fine = True
+        self.use_fine = False
 
     def __getitem__(self, index):
         if self.use_fine:
             idx = index % len(self.fine)
             ret = self.fine[idx]
         else:
-            ret = self.coarse[index]
+            idx = index % len(self.coarse)
+            ret = self.coarse[idx]
 
         self.use_fine = not self.use_fine
         return ret
 
     def __len__(self):
-        return len(self.coarse)
+        return len(self.fine) + len(self.coarse)

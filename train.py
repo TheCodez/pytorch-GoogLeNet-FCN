@@ -7,11 +7,11 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.utils.data as data
 from ignite.contrib.handlers import ProgressBar, TensorboardLogger
 from ignite.contrib.handlers.tensorboard_logger import OutputHandler, OptimizerParamsHandler
 from ignite.engine import Events, create_supervised_evaluator, create_supervised_trainer
 from ignite.metrics import RunningAverage, Loss
-from torch.utils.data import DataLoader
 
 from googlenet_fcn.datasets.cityscapes import CityscapesDataset, FineCoarseDataset
 from googlenet_fcn.datasets.transforms.transforms import Compose, ToTensor, \
@@ -44,14 +44,14 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers, include_
 
     if include_coarse:
         coarse = CityscapesDataset(root=data_dir, split='train_extra', mode='coarse', transforms=transform)
-        train_loader = DataLoader(FineCoarseDataset(fine, coarse), batch_size=batch_size, shuffle=True,
-                                  num_workers=num_workers, pin_memory=True)
+        train_loader = data.DataLoader(FineCoarseDataset(fine, coarse), batch_size=batch_size, shuffle=True,
+                                       num_workers=num_workers, pin_memory=True)
     else:
-        train_loader = DataLoader(fine, batch_size=batch_size, shuffle=True, num_workers=num_workers,
-                                  pin_memory=True)
+        train_loader = data.DataLoader(fine, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+                                       pin_memory=True)
 
-    val_loader = DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_transform),
-                            batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
+    val_loader = data.DataLoader(CityscapesDataset(root=data_dir, split='val', transforms=val_transform),
+                                 batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
 
