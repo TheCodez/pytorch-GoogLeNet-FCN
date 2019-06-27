@@ -121,8 +121,7 @@ def run(args):
     def _global_step_transform(engine, event_name):
         return trainer.state.iteration
 
-    exp_name = datetime.now().strftime("%Y%m%d-%H%M%S")
-    tb_logger = TensorboardLogger(os.path.join(args.log_dir, exp_name))
+    tb_logger = TensorboardLogger(args.log_dir)
     tb_logger.attach(trainer,
                      log_handler=OutputHandler(tag='training',
                                                metric_names=['loss']),
