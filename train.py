@@ -76,7 +76,7 @@ def run(args):
     model = model.to(device)
 
     train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
-                                                args.num_workers, args.coarse)
+                                                args.num_workers, args.include_coarse)
 
     criterion = nn.CrossEntropyLoss(ignore_index=255, reduction='sum')
 
@@ -90,7 +90,6 @@ def run(args):
             print("Loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
-            args.start_iteration = checkpoint.get('iteration', 0)
             best_iou = checkpoint.get('bestIoU', 0.0)
             model.load_state_dict(checkpoint['model'])
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -113,7 +112,7 @@ def run(args):
     cm = ConfusionMatrix(num_classes)
     evaluator = create_supervised_evaluator(model, metrics={'loss': Loss(criterion),
                                                             'IoU': IoU(cm),
-                                                            'acc': cmAccuracy(cm)},
+                                                            'accuracy': cmAccuracy(cm)},
                                             device=device, non_blocking=True)
 
     pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
@@ -135,7 +134,7 @@ def run(args):
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation',
-                                               metric_names=['loss', 'IoU', 'acc'],
+                                               metric_names=['loss', 'IoU', 'accuracy'],
                                                global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
@@ -159,7 +158,7 @@ def run(args):
     def initialize(engine):
         if args.resume:
             engine.state.epoch = args.start_epoch
-            engine.state.iteration = args.start_iteration
+            engine.state.iteration = args.start_epoch * len(engine.state.dataloader)
             engine.state.best_iou = best_iou
         else:
             engine.state.best_iou = 0.0
@@ -171,7 +170,7 @@ def run(args):
         metrics = evaluator.state.metrics
         loss = metrics['loss']
         iou = metrics['IoU']
-        acc = metrics['acc']
+        acc = metrics['accuracy']
         mean_iou = iou.mean()
 
         pbar.log_message("Validation results - Epoch: [{}/{}]: Loss: {:.2e}, Accuracy: {:.1f}, mIoU: {:.1f}"
@@ -198,7 +197,7 @@ if __name__ == '__main__':
                         help='momentum')
     parser.add_argument('--weight-decay', '--wd', type=float, default=5e-4,
                         help='momentum')
-    parser.add_argument('--coarse', action='store_true',
+    parser.add_argument('--include-coarse', action='store_true',
                         help='include coarse data')
     parser.add_argument('--freeze-bn', action='store_true',
                         help='freeze batch norm during training')
