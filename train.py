@@ -2,7 +2,6 @@ import os
 import random
 import sys
 from argparse import ArgumentParser
-from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -99,6 +98,7 @@ def run(args):
             sys.exit()
 
     if args.freeze_bn:
+        print("Freezing batch norm")
         model = freeze_batchnorm(model)
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device, non_blocking=True)
