@@ -133,7 +133,7 @@ def run(args):
 
     tb_logger.attach(trainer,
                      log_handler=WeightsHistHandler(model),
-                     event_name=Events.ITERATION_COMPLETED)
+                     event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation',
