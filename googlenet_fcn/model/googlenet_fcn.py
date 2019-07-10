@@ -10,11 +10,11 @@ from torchvision.models.googlenet import BasicConv2d, Inception
 
 pretrained_models = {
     'cityscapes': {
-        'url': '',
+        'url': 'https://github.com/TheCodez/pytorch-GoogLeNet-FCN/releases/download/1.0/googlenet_fcn_cs-c59aa8ae.pth',
         'num_classes': 19
     },
-    'voc': {
-        'url': '',
+    'voc_aug': {
+        'url': 'https://github.com/TheCodez/pytorch-GoogLeNet-FCN/releases/download/1.0/googlenet_fcn_voc-ab3f3182.pth',
         'num_classes': 21
     }
 }
